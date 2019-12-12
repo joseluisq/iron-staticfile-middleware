@@ -1,7 +1,7 @@
 use std::time::Duration;
 use std::{cmp, u32};
 
-use iron::headers::{CacheDirective, CacheControl};
+use iron::headers::{CacheControl, CacheDirective};
 use iron::modifier::Modifier;
 use iron::modifiers::Header;
 use iron::prelude::*;
@@ -30,6 +30,7 @@ impl Modifier<Response> for Cache {
         Header(CacheControl(vec![
             CacheDirective::Public,
             CacheDirective::MaxAge(self.0),
-        ])).modify(response)
+        ]))
+        .modify(response)
     }
 }

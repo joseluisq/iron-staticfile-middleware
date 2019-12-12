@@ -1,6 +1,6 @@
-use ::iron;
-use ::iron::prelude::*;
-use ::url;
+use iron;
+use iron::prelude::*;
+use url;
 
 pub struct Rewrite {
     from: Vec<Vec<String>>,
@@ -20,7 +20,9 @@ impl iron::BeforeMiddleware for Rewrite {
     fn before(&self, req: &mut Request) -> IronResult<()> {
         let should_rewrite = {
             let request_path = req.url.path();
-            self.from.iter().any(|rewrite_path| request_path == *rewrite_path)
+            self.from
+                .iter()
+                .any(|rewrite_path| request_path == *rewrite_path)
         };
 
         if should_rewrite {

@@ -1,6 +1,6 @@
+use iron::modifier::Modifier;
 use iron::prelude::*;
 use iron::AfterMiddleware;
-use iron::modifier::Modifier;
 
 /// Applies a modifier to every request that starts with a given path.
 pub struct Prefix<M> {
@@ -10,8 +10,9 @@ pub struct Prefix<M> {
 
 impl<M> Prefix<M> {
     pub fn new<P, S>(prefix: P, modifier: M) -> Prefix<M>
-        where P: IntoIterator<Item = S>,
-              S: AsRef<str>,
+    where
+        P: IntoIterator<Item = S>,
+        S: AsRef<str>,
     {
         Prefix {
             prefix: prefix.into_iter().map(|s| s.as_ref().into()).collect(),
@@ -24,13 +25,15 @@ impl<M> Prefix<M> {
             return false;
         }
 
-        path.iter().zip(self.prefix.iter())
+        path.iter()
+            .zip(self.prefix.iter())
             .all(|(path, prefix)| path == prefix)
     }
 }
 
 impl<M> AfterMiddleware for Prefix<M>
-    where M: Clone + Modifier<Response> + Send + Sync + 'static
+where
+    M: Clone + Modifier<Response> + Send + Sync + 'static,
 {
     fn after(&self, req: &mut Request, mut res: Response) -> IronResult<Response> {
         if self.prefix_matches(&req.url.path()) {

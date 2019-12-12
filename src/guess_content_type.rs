@@ -1,6 +1,6 @@
+use iron::headers::ContentType;
 use iron::prelude::*;
 use iron::AfterMiddleware;
-use iron::headers::ContentType;
 
 use mime::Mime;
 
@@ -12,15 +12,14 @@ pub struct GuessContentType {
 
 impl GuessContentType {
     pub fn new(default: Mime) -> GuessContentType {
-        GuessContentType {
-            default: default,
-        }
+        GuessContentType { default: default }
     }
 }
 
 impl Default for GuessContentType {
     fn default() -> GuessContentType {
-        let default = "application/octet-stream".parse()
+        let default = "application/octet-stream"
+            .parse()
             .expect("Unable to create default MIME type");
         GuessContentType::new(default)
     }
@@ -29,10 +28,13 @@ impl Default for GuessContentType {
 impl AfterMiddleware for GuessContentType {
     fn after(&self, req: &mut Request, mut res: Response) -> IronResult<Response> {
         match res.headers.get::<ContentType>() {
-            Some(_) => {},
+            Some(_) => {}
             None => {
-                let new_content_type = req.url.path().last()
-                    .and_then(|filename| ::mime_guess::guess_mime_type_opt(filename))
+                let new_content_type = req
+                    .url
+                    .path()
+                    .last()
+                    .and_then(|path| mime_guess::guess_mime_type_opt(path))
                     .unwrap_or_else(|| self.default.clone());
 
                 let header = ContentType(new_content_type);

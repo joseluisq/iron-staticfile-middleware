@@ -5,12 +5,7 @@ use std::time::UNIX_EPOCH;
 use std::{error, io};
 
 use iron::headers::{
-    AcceptEncoding,
-    ContentEncoding,
-    Encoding,
-    HttpDate,
-    IfModifiedSince,
-    LastModified,
+    AcceptEncoding, ContentEncoding, Encoding, HttpDate, IfModifiedSince, LastModified,
 };
 use iron::method::Method;
 use iron::middleware::Handler;
@@ -18,7 +13,7 @@ use iron::modifiers::Header;
 use iron::prelude::*;
 use iron::status;
 
-use ::time;
+use time;
 
 /// Recursively serves files from the specified root directory.
 pub struct Staticfile {
@@ -27,23 +22,22 @@ pub struct Staticfile {
 
 impl Staticfile {
     pub fn new<P>(root: P) -> io::Result<Staticfile>
-        where P: AsRef<Path>
+    where
+        P: AsRef<Path>,
     {
-        let root = try!(root.as_ref().canonicalize());
+        let root = root.as_ref().canonicalize()?;
 
-        Ok(Staticfile {
-            root: root,
-        })
+        Ok(Staticfile { root: root })
     }
 
-    fn resolve_path(&self, path: &[&str]) -> Result<PathBuf, Box<error::Error>> {
+    fn resolve_path(&self, path: &[&str]) -> Result<PathBuf, Box<dyn error::Error>> {
         let mut resolved = self.root.clone();
 
         for component in path {
             resolved.push(component);
         }
 
-        let resolved = try!(resolved.canonicalize());
+        let resolved = resolved.canonicalize()?;
 
         // Protect against path/directory traversal
         if !resolved.starts_with(&self.root) {
@@ -57,7 +51,7 @@ impl Staticfile {
 impl Handler for Staticfile {
     fn handle(&self, req: &mut Request) -> IronResult<Response> {
         match req.method {
-            Method::Get => {},
+            Method::Get => {}
             _ => return Ok(Response::with(status::MethodNotAllowed)),
         }
 
@@ -67,9 +61,7 @@ impl Handler for Staticfile {
         };
 
         let accept_gz = match req.headers.get::<AcceptEncoding>() {
-            Some(accept) => {
-                accept.0.iter().any(|qi| qi.item == Encoding::Gzip)
-            }
+            Some(accept) => accept.0.iter().any(|qi| qi.item == Encoding::Gzip),
             None => false,
         };
 
@@ -81,22 +73,40 @@ impl Handler for Staticfile {
         let client_last_modified = req.headers.get::<IfModifiedSince>();
         let last_modified = file.last_modified().ok().map(HttpDate);
 
-        if let (Some(client_last_modified), Some(last_modified)) = (client_last_modified, last_modified) {
-            trace!("Comparing {} (file) <= {} (req)", last_modified, client_last_modified.0);
+        if let (Some(client_last_modified), Some(last_modified)) =
+            (client_last_modified, last_modified)
+        {
+            trace!(
+                "Comparing {} (file) <= {} (req)",
+                last_modified,
+                client_last_modified.0
+            );
+
             if last_modified <= client_last_modified.0 {
                 return Ok(Response::with(status::NotModified));
             }
         }
 
-        let encoding = if file.is_gz { Encoding::Gzip } else { Encoding::Identity };
+        let encoding = if file.is_gz {
+            Encoding::Gzip
+        } else {
+            Encoding::Identity
+        };
+
         let encoding = ContentEncoding(vec![encoding]);
 
         match last_modified {
             Some(last_modified) => {
                 let last_modified = LastModified(last_modified);
-                Ok(Response::with((status::Ok, Header(last_modified), Header(encoding), file.file)))
-            },
-            None => Ok(Response::with((status::Ok, Header(encoding), file.file)))
+
+                Ok(Response::with((
+                    status::Ok,
+                    Header(last_modified),
+                    Header(encoding),
+                    file.file,
+                )))
+            }
+            None => Ok(Response::with((status::Ok, Header(encoding), file.file))),
         }
     }
 }
@@ -108,18 +118,23 @@ struct StaticFileWithMetadata {
 }
 
 impl StaticFileWithMetadata {
-    pub fn search<P>(path: P, allow_gz: bool) -> Result<StaticFileWithMetadata, Box<error::Error>> // TODO: unbox
-        where P: Into<PathBuf>
+    pub fn search<P>(
+        path: P,
+        allow_gz: bool,
+    ) -> Result<StaticFileWithMetadata, Box<dyn error::Error>>
+    // TODO: unbox
+    where
+        P: Into<PathBuf>,
     {
         let mut file_path = path.into();
         trace!("Opening {}", file_path.display());
-        let mut file = try!(StaticFileWithMetadata::open(&file_path));
+        let mut file = StaticFileWithMetadata::open(&file_path)?;
 
         // Look for index.html inside of a directory
         if file.metadata.is_dir() {
             file_path.push("index.html");
             trace!("Redirecting to index {}", file_path.display());
-            file = try!(StaticFileWithMetadata::open(&file_path));
+            file = StaticFileWithMetadata::open(&file_path)?;
         }
 
         if file.metadata.is_file() {
@@ -129,6 +144,7 @@ impl StaticFileWithMetadata {
                 side_by_side_path.push(".gz");
                 file_path = side_by_side_path.into();
                 trace!("Attempting to find side-by-side GZ {}", file_path.display());
+
                 match StaticFileWithMetadata::open(&file_path) {
                     Ok(mut gz_file) => {
                         if gz_file.metadata.is_file() {
@@ -137,7 +153,7 @@ impl StaticFileWithMetadata {
                         } else {
                             Ok(file)
                         }
-                    },
+                    }
                     Err(_) => Ok(file),
                 }
             } else {
@@ -148,11 +164,12 @@ impl StaticFileWithMetadata {
         }
     }
 
-    fn open<P>(path: P) -> Result<StaticFileWithMetadata, Box<error::Error>>
-        where P: AsRef<Path>
+    fn open<P>(path: P) -> Result<StaticFileWithMetadata, Box<dyn error::Error>>
+    where
+        P: AsRef<Path>,
     {
-        let file = try!(File::open(path));
-        let metadata = try!(file.metadata());
+        let file = File::open(path)?;
+        let metadata = file.metadata()?;
 
         Ok(StaticFileWithMetadata {
             file: file,
@@ -161,9 +178,9 @@ impl StaticFileWithMetadata {
         })
     }
 
-    pub fn last_modified(&self) -> Result<time::Tm, Box<error::Error>> {
-        let modified = try!(self.metadata.modified());
-        let since_epoch = try!(modified.duration_since(UNIX_EPOCH));
+    pub fn last_modified(&self) -> Result<time::Tm, Box<dyn error::Error>> {
+        let modified = self.metadata.modified()?;
+        let since_epoch = modified.duration_since(UNIX_EPOCH)?;
 
         // HTTP times don't have nanosecond precision, so we truncate
         // the modification time.
@@ -181,19 +198,19 @@ impl StaticFileWithMetadata {
 
 #[cfg(test)]
 mod test {
-    extern crate iron_test;
     extern crate hyper;
+    extern crate iron_test;
     extern crate tempdir;
 
     use super::*;
 
+    use std::fs::{DirBuilder, File};
     use std::path::{Path, PathBuf};
-    use std::fs::{File, DirBuilder};
 
-    use ::iron::status;
-    use self::iron_test::request;
     use self::hyper::header::Headers;
+    use self::iron_test::request;
     use self::tempdir::TempDir;
+    use iron::status;
 
     struct TestFilesystemSetup(TempDir);
 
@@ -208,7 +225,10 @@ mod test {
 
         fn dir(&self, name: &str) -> PathBuf {
             let p = self.path().join(name);
-            DirBuilder::new().recursive(true).create(&p).expect("Could not create directory");
+            DirBuilder::new()
+                .recursive(true)
+                .create(&p)
+                .expect("Could not create directory");
             p
         }
 
