@@ -14,7 +14,7 @@ impl HttpToHttpsRedirect {
         HttpToHttpsRedirect {
             permanent: false,
             host: host.into(),
-            port: port,
+            port,
         }
     }
 

@@ -16,7 +16,7 @@ impl<M> Prefix<M> {
     {
         Prefix {
             prefix: prefix.into_iter().map(|s| s.as_ref().into()).collect(),
-            modifier: modifier,
+            modifier,
         }
     }
 

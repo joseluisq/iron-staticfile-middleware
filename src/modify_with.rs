@@ -9,7 +9,7 @@ pub struct ModifyWith<M> {
 
 impl<M> ModifyWith<M> {
     pub fn new(modifier: M) -> ModifyWith<M> {
-        ModifyWith { modifier: modifier }
+        ModifyWith { modifier }
     }
 }
 

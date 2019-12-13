@@ -12,7 +12,7 @@ pub struct GuessContentType {
 
 impl GuessContentType {
     pub fn new(default: Mime) -> GuessContentType {
-        GuessContentType { default: default }
+        GuessContentType { default }
     }
 }
 
@@ -34,13 +34,14 @@ impl AfterMiddleware for GuessContentType {
                     .url
                     .path()
                     .last()
-                    .and_then(|path| mime_guess::guess_mime_type_opt(path))
+                    .and_then(mime_guess::guess_mime_type_opt)
                     .unwrap_or_else(|| self.default.clone());
 
                 let header = ContentType(new_content_type);
                 res.headers.set(header);
             }
         }
+
         Ok(res)
     }
 }

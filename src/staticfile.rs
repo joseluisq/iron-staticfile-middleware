@@ -27,7 +27,7 @@ impl Staticfile {
     {
         let root = root.as_ref().canonicalize()?;
 
-        Ok(Staticfile { root: root })
+        Ok(Staticfile { root })
     }
 
     fn resolve_path(&self, path: &[&str]) -> Result<PathBuf, Box<dyn error::Error>> {
@@ -172,8 +172,8 @@ impl StaticFileWithMetadata {
         let metadata = file.metadata()?;
 
         Ok(StaticFileWithMetadata {
-            file: file,
-            metadata: metadata,
+            file,
+            metadata,
             is_gz: false,
         })
     }
