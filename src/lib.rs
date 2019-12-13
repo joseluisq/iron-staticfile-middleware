@@ -16,10 +16,10 @@ mod prefix;
 mod rewrite;
 mod staticfile;
 
-pub use cache::Cache;
-pub use guess_content_type::GuessContentType;
-pub use http_to_https_redirect::HttpToHttpsRedirect;
-pub use modify_with::ModifyWith;
-pub use prefix::Prefix;
-pub use rewrite::Rewrite;
-pub use staticfile::Staticfile;
+pub use crate::cache::Cache;
+pub use crate::guess_content_type::GuessContentType;
+pub use crate::http_to_https_redirect::HttpToHttpsRedirect;
+pub use crate::modify_with::ModifyWith;
+pub use crate::prefix::Prefix;
+pub use crate::rewrite::Rewrite;
+pub use crate::staticfile::Staticfile;
