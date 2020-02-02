@@ -51,6 +51,7 @@ impl Staticfile {
 impl Handler for Staticfile {
     fn handle(&self, req: &mut Request) -> IronResult<Response> {
         match req.method {
+            Method::Head => {}
             Method::Get => {}
             _ => return Ok(Response::with(status::MethodNotAllowed)),
         }
