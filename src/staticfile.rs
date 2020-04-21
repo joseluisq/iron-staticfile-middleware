@@ -15,36 +15,57 @@ use iron::status;
 
 use time;
 
-/// Recursively serves files from the specified root directory.
+/// Recursively serves files from the specified root and assets directories.
 pub struct Staticfile {
     root: PathBuf,
+    assets: PathBuf,
 }
 
 impl Staticfile {
-    pub fn new<P>(root: P) -> io::Result<Staticfile>
+    pub fn new<P>(root: P, assets: P) -> io::Result<Staticfile>
     where
         P: AsRef<Path>,
     {
         let root = root.as_ref().canonicalize()?;
+        let assets = assets.as_ref().canonicalize()?;
 
-        Ok(Staticfile { root })
+        Ok(Staticfile { root, assets })
     }
 
     fn resolve_path(&self, path: &[&str]) -> Result<PathBuf, Box<dyn error::Error>> {
-        let mut resolved = self.root.clone();
+        let path_dirname = path[0];
+        let asserts_dirname = self.assets.iter().last().unwrap().to_str().unwrap();
+        let mut is_assets = false;
 
-        for component in path {
-            resolved.push(component);
-        }
+        let resolved = if path_dirname == asserts_dirname {
+            // Assets path validation resolve
+            is_assets = true;
+
+            let mut res = self.assets.clone();
+            for component in path.iter().skip(1) {
+                res.push(component);
+            }
+
+            res
+        } else {
+            // Root path validation resolve
+            let mut res = self.root.clone();
+            for component in path {
+                res.push(component);
+            }
+
+            res
+        };
 
         let resolved = resolved.canonicalize()?;
+        let path = if is_assets { &self.assets } else { &self.root };
 
         // Protect against path/directory traversal
-        if !resolved.starts_with(&self.root) {
-            Err(From::from("Cannot leave root path"))
-        } else {
-            Ok(resolved)
+        if !resolved.starts_with(&path) {
+            return Result::Err(From::from(format!("Cannot leave {:?} path", &path)));
         }
+
+        Ok(resolved)
     }
 }
 
@@ -244,8 +265,10 @@ mod test {
     fn staticfile_resolves_paths() {
         let fs = TestFilesystemSetup::new();
         fs.file("index.html");
+        let fs2 = TestFilesystemSetup::new();
+        fs2.dir("assets");
 
-        let sf = Staticfile::new(fs.path()).unwrap();
+        let sf = Staticfile::new(fs.path(), fs2.path()).unwrap();
         let path = sf.resolve_path(&["index.html"]);
         assert!(path.unwrap().ends_with("index.html"));
     }
@@ -255,8 +278,10 @@ mod test {
         let fs = TestFilesystemSetup::new();
         fs.dir("dir");
         fs.file("dir/index.html");
+        let fs2 = TestFilesystemSetup::new();
+        fs2.file("assets");
 
-        let sf = Staticfile::new(fs.path()).unwrap();
+        let sf = Staticfile::new(fs.path(), fs2.path()).unwrap();
         let path = sf.resolve_path(&["dir", "index.html"]);
         assert!(path.unwrap().ends_with("dir/index.html"));
     }
@@ -266,8 +291,10 @@ mod test {
         let fs = TestFilesystemSetup::new();
         fs.file("naughty.txt");
         let dir = fs.dir("dir");
+        let fs2 = TestFilesystemSetup::new();
+        let dir2 = fs2.file("assets");
 
-        let sf = Staticfile::new(dir).unwrap();
+        let sf = Staticfile::new(dir, dir2).unwrap();
         let path = sf.resolve_path(&["..", "naughty.txt"]);
         assert!(path.is_err());
     }
@@ -275,7 +302,8 @@ mod test {
     #[test]
     fn staticfile_disallows_post_requests() {
         let fs = TestFilesystemSetup::new();
-        let sf = Staticfile::new(fs.path()).unwrap();
+        let fs2 = TestFilesystemSetup::new();
+        let sf = Staticfile::new(fs.path(), fs2.path()).unwrap();
 
         let response = request::post("http://127.0.0.1/", Headers::new(), "", &sf);
 

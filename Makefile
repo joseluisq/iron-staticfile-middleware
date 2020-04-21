@@ -1,7 +1,7 @@
 test:
 	@echo "Testing application..."
-	@rustc --version
-	@cargo test
+	@rustc -vV
+	@cargo test -j2 --all
 .PHONY: test
 
 fmt:
