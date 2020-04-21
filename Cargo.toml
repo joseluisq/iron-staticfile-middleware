@@ -1,6 +1,6 @@
 [package]
 name = "iron_staticfile_middleware"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Jose Quintana <https://git.io/joseluisq>"]
 
 [dependencies]
