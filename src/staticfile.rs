@@ -5,7 +5,8 @@ use std::time::UNIX_EPOCH;
 use std::{error, io};
 
 use iron::headers::{
-    AcceptEncoding, ContentEncoding, Encoding, HttpDate, IfModifiedSince, LastModified,
+    AcceptEncoding, ContentEncoding, ContentLength, Encoding, HttpDate, IfModifiedSince,
+    LastModified,
 };
 use iron::method::Method;
 use iron::middleware::Handler;
@@ -117,19 +118,29 @@ impl Handler for Staticfile {
 
         let encoding = ContentEncoding(vec![encoding]);
 
-        match last_modified {
+        let mut resp = match last_modified {
             Some(last_modified) => {
                 let last_modified = LastModified(last_modified);
-
-                Ok(Response::with((
+                Response::with((
                     status::Ok,
                     Header(last_modified),
                     Header(encoding),
                     file.file,
-                )))
+                ))
             }
-            None => Ok(Response::with((status::Ok, Header(encoding), file.file))),
+            None => Response::with((status::Ok, Header(encoding), file.file)),
+        };
+
+        // Empty current response body on HEAD requests,
+        // just setting up the `content-length` header (size of the file in bytes)
+        // https://tools.ietf.org/html/rfc7231#section-4.3.2
+        if req.method == Method::Head {
+            resp.set_mut(Vec::new());
+            resp.set_mut(Header(ContentLength(file.metadata.len())));
+            return Ok(resp);
         }
+
+        Ok(resp)
     }
 }
 
