@@ -5,8 +5,8 @@ use std::time::UNIX_EPOCH;
 use std::{error, io};
 
 use iron::headers::{
-    AcceptEncoding, ContentEncoding, ContentLength, Encoding, HttpDate, IfModifiedSince,
-    LastModified, AcceptRanges, RangeUnit, Range,
+    AcceptEncoding, AcceptRanges, ContentEncoding, ContentLength, Encoding, HttpDate,
+    IfModifiedSince, LastModified, Range, RangeUnit,
 };
 
 use iron::method::Method;
@@ -113,7 +113,11 @@ impl Handler for Staticfile {
             }
         }
 
-        let encoding = if file.is_gz { Encoding::Gzip } else { Encoding::Identity };
+        let encoding = if file.is_gz {
+            Encoding::Gzip
+        } else {
+            Encoding::Identity
+        };
         let encoding = ContentEncoding(vec![encoding]);
 
         let mut resp = match last_modified {
@@ -137,7 +141,7 @@ impl Handler for Staticfile {
             resp.set_mut(Header(ContentLength(file.metadata.len())));
             return Ok(resp);
         }
-        
+
         // Partial content delivery response
         let accept_range_header = Header(AcceptRanges(vec![RangeUnit::Bytes]));
         let range_req_header = req.headers.get::<Range>().cloned();
@@ -147,7 +151,7 @@ impl Handler for Staticfile {
                 // Deliver the whole file
                 resp.set_mut(accept_range_header);
                 resp
-            },
+            }
             Some(range) => {
                 // Try to deliver partial content
                 match range {
@@ -157,8 +161,8 @@ impl Handler for Staticfile {
                         } else {
                             Response::with(status::NotFound)
                         }
-                    },
-                    _ => Response::with(status::RangeNotSatisfiable)
+                    }
+                    _ => Response::with(status::RangeNotSatisfiable),
                 }
             }
         };

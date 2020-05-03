@@ -1,5 +1,5 @@
 // NOTE:
-// This file implements Partial Content Delivery which is used as part as this middleware. 
+// This file implements Partial Content Delivery which is used as part as this middleware.
 // Code below was borrowed from one @Cobrand's PR and adapted to this project.
 // More details at https://github.com/iron/staticfile/pull/98
 

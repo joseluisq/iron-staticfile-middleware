@@ -12,10 +12,10 @@ mod cache;
 mod guess_content_type;
 mod http_to_https_redirect;
 mod modify_with;
+mod partial_file;
 mod prefix;
 mod rewrite;
 mod staticfile;
-mod partial_file;
 
 pub use crate::cache::Cache;
 pub use crate::guess_content_type::GuessContentType;
