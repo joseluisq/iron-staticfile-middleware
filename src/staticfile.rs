@@ -6,13 +6,15 @@ use std::{error, io};
 
 use iron::headers::{
     AcceptEncoding, ContentEncoding, ContentLength, Encoding, HttpDate, IfModifiedSince,
-    LastModified,
+    LastModified, AcceptRanges, RangeUnit, Range,
 };
+
 use iron::method::Method;
 use iron::middleware::Handler;
 use iron::modifiers::Header;
 use iron::prelude::*;
 use iron::status;
+use partial_file::PartialFile;
 
 use time;
 
@@ -88,7 +90,8 @@ impl Handler for Staticfile {
             None => false,
         };
 
-        let file = match StaticFileWithMetadata::search(file_path, accept_gz) {
+        // Get current file metadata
+        let file = match StaticFileWithMetadata::search(&file_path, accept_gz) {
             Ok(file) => file,
             Err(_) => return Ok(Response::with(status::NotFound)),
         };
@@ -110,12 +113,7 @@ impl Handler for Staticfile {
             }
         }
 
-        let encoding = if file.is_gz {
-            Encoding::Gzip
-        } else {
-            Encoding::Identity
-        };
-
+        let encoding = if file.is_gz { Encoding::Gzip } else { Encoding::Identity };
         let encoding = ContentEncoding(vec![encoding]);
 
         let mut resp = match last_modified {
@@ -139,6 +137,31 @@ impl Handler for Staticfile {
             resp.set_mut(Header(ContentLength(file.metadata.len())));
             return Ok(resp);
         }
+        
+        // Partial content delivery response
+        let accept_range_header = Header(AcceptRanges(vec![RangeUnit::Bytes]));
+        let range_req_header = req.headers.get::<Range>().cloned();
+
+        let resp = match range_req_header {
+            None => {
+                // Deliver the whole file
+                resp.set_mut(accept_range_header);
+                resp
+            },
+            Some(range) => {
+                // Try to deliver partial content
+                match range {
+                    Range::Bytes(vec_range) => {
+                        if let Ok(partial_file) = PartialFile::from_path(&file_path, vec_range) {
+                            Response::with((status::Ok, partial_file, accept_range_header))
+                        } else {
+                            Response::with(status::NotFound)
+                        }
+                    },
+                    _ => Response::with(status::RangeNotSatisfiable)
+                }
+            }
+        };
 
         Ok(resp)
     }

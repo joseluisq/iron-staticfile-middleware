@@ -15,6 +15,7 @@ mod modify_with;
 mod prefix;
 mod rewrite;
 mod staticfile;
+mod partial_file;
 
 pub use crate::cache::Cache;
 pub use crate::guess_content_type::GuessContentType;
