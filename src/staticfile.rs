@@ -5,10 +5,11 @@ use std::time::UNIX_EPOCH;
 use std::{error, io};
 
 use iron::headers::{
-    AcceptEncoding, AcceptRanges, ContentEncoding, ContentLength, Encoding, HttpDate,
+    AcceptEncoding, AcceptRanges, CacheControl, ContentEncoding, ContentLength, Encoding, HttpDate,
     IfModifiedSince, LastModified, Range, RangeUnit,
 };
 
+use helpers;
 use iron::method::Method;
 use iron::middleware::Handler;
 use iron::modifiers::Header;
@@ -85,10 +86,7 @@ impl Handler for Staticfile {
             Err(_) => return Ok(Response::with(status::NotFound)),
         };
 
-        let accept_gz = match req.headers.get::<AcceptEncoding>() {
-            Some(accept) => accept.0.iter().any(|qi| qi.item == Encoding::Gzip),
-            None => false,
-        };
+        let accept_gz = helpers::accept_gzip(req.headers.get::<AcceptEncoding>());
 
         // Get current file metadata
         let file = match StaticFileWithMetadata::search(&file_path, accept_gz) {
@@ -142,29 +140,31 @@ impl Handler for Staticfile {
             return Ok(resp);
         }
 
-        // Partial content delivery response
-        let accept_range_header = Header(AcceptRanges(vec![RangeUnit::Bytes]));
-        let range_req_header = req.headers.get::<Range>().cloned();
+        // Partial Content Delivery response
 
+        // Enable the "Accept-Ranges" header on all files
+        resp.set_mut(Header(AcceptRanges(vec![RangeUnit::Bytes])));
+
+        let range_req_header = req.headers.get::<Range>().cloned();
         let resp = match range_req_header {
-            None => {
-                // Deliver the whole file
-                resp.set_mut(accept_range_header);
-                resp
-            }
-            Some(range) => {
-                // Try to deliver partial content
-                match range {
-                    Range::Bytes(vec_range) => {
-                        if let Ok(partial_file) = PartialFile::from_path(&file_path, vec_range) {
-                            Response::with((status::Ok, partial_file, accept_range_header))
-                        } else {
-                            Response::with(status::NotFound)
-                        }
-                    }
-                    _ => Response::with(status::RangeNotSatisfiable),
+            // Deliver the whole file
+            None => resp,
+            // Try to deliver partial content
+            Some(Range::Bytes(v)) => {
+                // Remove "Cache-Control" headers
+                req.headers.remove::<CacheControl>();
+
+                if let Ok(partial_file) = PartialFile::from_path(&file_path, v) {
+                    Response::with((
+                        status::Ok,
+                        partial_file,
+                        Header(AcceptRanges(vec![RangeUnit::Bytes])),
+                    ))
+                } else {
+                    Response::with(status::NotFound)
                 }
             }
+            Some(_) => Response::with(status::RangeNotSatisfiable),
         };
 
         Ok(resp)
