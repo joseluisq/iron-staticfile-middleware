@@ -10,6 +10,7 @@ extern crate url;
 
 mod cache;
 mod guess_content_type;
+pub mod helpers;
 mod http_to_https_redirect;
 mod modify_with;
 mod partial_file;
