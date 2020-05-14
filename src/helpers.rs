@@ -25,16 +25,9 @@ pub const TEXT_MIME_TYPES: [&str; 16] = [
 // Checks if a `content-type` header is a common text-based MIME type for Gzip compression
 pub fn is_text_mime_type(content_type: Option<&ContentType>) -> bool {
     match content_type {
-        Some(content_type) => {
-            let mut is_text_mime = false;
-            for mime_type in &TEXT_MIME_TYPES {
-                if mime_type.parse::<Mime>().unwrap() == content_type.0 {
-                    is_text_mime = true;
-                    break;
-                }
-            }
-            is_text_mime
-        }
+        Some(content_type) => TEXT_MIME_TYPES
+            .iter()
+            .any(|h| h.parse::<Mime>().unwrap() == content_type.0),
         None => false,
     }
 }
