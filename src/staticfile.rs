@@ -5,7 +5,7 @@ use std::time::UNIX_EPOCH;
 use std::{error, io};
 
 use iron::headers::{
-    AcceptEncoding, AcceptRanges, CacheControl, ContentEncoding, ContentLength, Encoding, HttpDate,
+    AcceptEncoding, AcceptRanges, ContentEncoding, ContentLength, Encoding, HttpDate,
     IfModifiedSince, LastModified, Range, RangeUnit,
 };
 
@@ -135,7 +135,7 @@ impl Handler for Staticfile {
         // just setting up the `content-length` header (size of the file in bytes)
         // https://tools.ietf.org/html/rfc7231#section-4.3.2
         if req.method == Method::Head {
-            resp.set_mut(Vec::new());
+            resp.set_mut(vec![]);
             resp.set_mut(Header(ContentLength(file.metadata.len())));
             return Ok(resp);
         }
@@ -151,9 +151,6 @@ impl Handler for Staticfile {
             None => resp,
             // Try to deliver partial content
             Some(Range::Bytes(v)) => {
-                // Remove "Cache-Control" headers
-                req.headers.remove::<CacheControl>();
-
                 if let Ok(partial_file) = PartialFile::from_path(&file_path, v) {
                     Response::with((
                         status::Ok,
