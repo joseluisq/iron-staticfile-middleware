@@ -4,7 +4,7 @@ version = "0.4.2"
 authors = ["Jose Quintana <https://git.io/joseluisq>"]
 
 [dependencies]
-iron = "0.6"
+iron = { git = "https://github.com/static-web-server/iron.git", tag = "v0.7.0-beta" }
 log = "0.4"
 mime = "0.2"
 mime_guess = "1.8"
@@ -14,7 +14,7 @@ url = "1.4"
 
 [dev-dependencies]
 hyper = "0.10.4"
-iron-test = "0.6.0"
+iron-test = { git = "https://github.com/static-web-server/iron-test.git", branch = "master" }
 tempdir = "0.3.5"
 
 [profile.release]
